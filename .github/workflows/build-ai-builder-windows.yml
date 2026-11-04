@@ -1,0 +1,114 @@
+name: Build AI Builder for Windows
+
+# Produces an executable Windows desktop app and the matching CLI from our own source.
+# The original Craft Anything source remains unchanged.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-ai-builder-windows.yml'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'apps/**'
+      - 'crates/**'
+      - 'vendor/**'
+      - 'assets/**'
+      - 'packaging/windows/portable.txt'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-builder-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-portable:
+    name: Windows x64 portable app + CLI
+    runs-on: windows-2025
+    timeout-minutes: 115
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      CARGO_INCREMENTAL: '0'
+      CARGO_BUILD_JOBS: '2'
+      CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUSTFLAGS: '-C target-feature=+crt-static'
+    steps:
+      - name: Check out our source code
+        uses: actions/checkout@v4
+
+      - name: Install supported stable Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: windows-ai-builder
+          cache-on-failure: true
+
+      - name: Display toolchain and pinned source
+        run: |
+          rustc --version
+          cargo --version
+          git log -1 --format="%h %s"
+          if ($LASTEXITCODE -ne 0) { throw "Git source check failed" }
+
+      - name: Compile graphical app and CLI
+        run: |
+          cargo build --release --locked --target x86_64-pc-windows-msvc -p craft-anything -p craft-anything-cli
+          if ($LASTEXITCODE -ne 0) { throw "Windows build failed" }
+
+      - name: Smoke-test the built command-line app
+        run: |
+          & "target/x86_64-pc-windows-msvc/release/craft-anything-cli.exe" --version
+          if ($LASTEXITCODE -ne 0) { throw "CLI smoke test failed" }
+          & "target/x86_64-pc-windows-msvc/release/craft-anything.exe" --version
+          if ($LASTEXITCODE -ne 0) { throw "Desktop executable smoke test failed" }
+
+      - name: Package portable desktop application
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $folder = "dist/AI-Builder-Build-Copies-windows-x64"
+          New-Item -ItemType Directory -Force $folder | Out-Null
+          Copy-Item "target/x86_64-pc-windows-msvc/release/craft-anything.exe" "$folder/AI-Builder.exe"
+          Copy-Item "target/x86_64-pc-windows-msvc/release/craft-anything-cli.exe" "$folder/craft-anything-cli.exe"
+          Copy-Item "packaging/windows/portable.txt" "$folder/portable.txt"
+          foreach ($f in @('README.md','LICENSE-MIT','LICENSE-APACHE','NOTICE','ATTRIBUTION.md')) {
+            if (Test-Path $f) { Copy-Item $f "$folder/$f" }
+          }
+          @'
+          AI Builder - Build Copies
+          =========================
+          This is an exact-source, locally built copy of Craft Anything.
+          Open AI-Builder.exe to launch the desktop application.
+
+          To build or recreate websites/apps/games, install a supported coding agent
+          such as Claude Code, sign in to that agent, then open AI-Builder.
+          The app's Help and Settings explain its supported backends.
+
+          Optional diagnosis in PowerShell:
+            ./craft-anything-cli.exe doctor
+
+          This portable folder stores settings in CraftAnythingData next to the exe.
+          Keep the folder together and move it as one unit.
+
+          This is an unsigned, independently built executable.
+          Source: https://github.com/dannythehat/AI-Builder-Build-Copies
+          Original licences and upstream attribution are included.
+          '@ | Set-Content -Encoding UTF8 -Path "$folder/START-HERE.txt"
+          $zip = "dist/AI-Builder-Build-Copies-windows-x64-portable.zip"
+          Compress-Archive -LiteralPath $folder -DestinationPath $zip -Force
+          Get-ChildItem $folder | Select-Object Name, Length
+          Get-Item $zip | Select-Object FullName, Length
+
+      - name: Upload runnable Windows download
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI-Builder-Build-Copies-Windows-x64
+          path: dist/AI-Builder-Build-Copies-windows-x64-portable.zip
+          if-no-files-found: error
+          retention-days: 90
