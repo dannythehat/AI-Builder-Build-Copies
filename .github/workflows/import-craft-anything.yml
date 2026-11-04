@@ -15,7 +15,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: true
-      - name: Import exact upstream source tree
+      - name: Mirror pinned source, preserving workflow upload for separate authorisation
         shell: bash
         run: |
           set -euo pipefail
@@ -26,15 +26,14 @@ jobs:
           git -C "$SOURCE" fetch --depth=1 --no-tags origin "$PIN"
           git -C "$SOURCE" checkout -q --detach FETCH_HEAD
           test "$(git -C "$SOURCE" rev-parse HEAD)" = "$PIN"
-          EXPECTED_TREE="$(git -C "$SOURCE" rev-parse HEAD^{tree})"
-          rsync -a --delete --exclude='.git/' "$SOURCE/" "$GITHUB_WORKSPACE/"
+          rsync -a --delete --exclude='.git/' --exclude='.github/workflows/' "$SOURCE/" "$GITHUB_WORKSPACE/"
           cd "$GITHUB_WORKSPACE"
           git add -A
-          ACTUAL_TREE="$(git write-tree)"
-          echo "Expected source tree: $EXPECTED_TREE"
-          echo "Staged mirror tree:  $ACTUAL_TREE"
-          test "$ACTUAL_TREE" = "$EXPECTED_TREE"
+          git -C "$SOURCE" ls-tree -r HEAD | grep -v $'\t.github/workflows/' > "$RUNNER_TEMP/expected-tracked"
+          git ls-tree -r "$(git write-tree)" | grep -v $'\t.github/workflows/' > "$RUNNER_TEMP/actual-tracked"
+          diff -u "$RUNNER_TEMP/expected-tracked" "$RUNNER_TEMP/actual-tracked"
+          echo 'All non-workflow source paths and Git blob hashes match upstream exactly.'
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'Import exact Craft Anything source at 7a0d7de'
+          git commit -m 'Import Craft Anything source at 7a0d7de (workflow files to follow)'
           git push origin HEAD:main
