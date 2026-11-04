@@ -15,13 +15,15 @@ on:
       - 'vendor/**'
       - 'assets/**'
       - 'packaging/windows/portable.txt'
+      - 'packaging/windows/Setup-Any-AI.ps1'
+      - 'docs/AI-BUILDER-ANY-AI.md'
 
 permissions:
   contents: read
 
 concurrency:
   group: ai-builder-windows-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   windows-portable:
@@ -69,6 +71,20 @@ jobs:
           & "target/x86_64-pc-windows-msvc/release/craft-anything.exe" --version
           if ($LASTEXITCODE -ne 0) { throw "Desktop executable smoke test failed" }
 
+      - name: Check Windows AI provider selector syntax
+        run: |
+          $tokens = $null
+          $issues = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path "packaging/windows/Setup-Any-AI.ps1").Path,
+            [ref]$tokens,
+            [ref]$issues
+          )
+          if ($issues.Count -gt 0) {
+            $issues | ForEach-Object { Write-Error $_.ToString() }
+            throw "PowerShell AI selector syntax check failed"
+          }
+
       - name: Package portable desktop application
         run: |
           $ErrorActionPreference = 'Stop'
@@ -77,6 +93,8 @@ jobs:
           Copy-Item "target/x86_64-pc-windows-msvc/release/craft-anything.exe" "$folder/AI-Builder.exe"
           Copy-Item "target/x86_64-pc-windows-msvc/release/craft-anything-cli.exe" "$folder/craft-anything-cli.exe"
           Copy-Item "packaging/windows/portable.txt" "$folder/portable.txt"
+          Copy-Item "packaging/windows/Setup-Any-AI.ps1" "$folder/Setup-Any-AI.ps1"
+          Copy-Item "docs/AI-BUILDER-ANY-AI.md" "$folder/AI-PROVIDERS.md"
           foreach ($f in @('README.md','LICENSE-MIT','LICENSE-APACHE','NOTICE','ATTRIBUTION.md')) {
             if (Test-Path $f) { Copy-Item $f "$folder/$f" }
           }
@@ -85,6 +103,8 @@ jobs:
           =========================
           This is an exact-source, locally built copy of Craft Anything.
           Open AI-Builder.exe to launch the desktop application.
+          Use Setup-Any-AI.ps1 -Provider detect to see installed AI agents.
+          Use Settings -> AI and the Built by selector to choose any supported backend.
 
           To build or recreate websites/apps/games, install a supported coding agent
           such as Claude Code, sign in to that agent, then open AI-Builder.
@@ -102,6 +122,8 @@ jobs:
           '@ | Set-Content -Encoding UTF8 -Path "$folder/START-HERE.txt"
           $zip = "dist/AI-Builder-Build-Copies-windows-x64-portable.zip"
           Compress-Archive -LiteralPath $folder -DestinationPath $zip -Force
+          & "$folder/craft-anything-cli.exe" ai list
+          if ($LASTEXITCODE -ne 0) { throw "Provider configuration command failed" }
           Get-ChildItem $folder | Select-Object Name, Length
           Get-Item $zip | Select-Object FullName, Length
 
