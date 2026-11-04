@@ -50,7 +50,7 @@ fn main() -> eframe::Result {
     log::info!("engine and AI ready; opening the window");
 
     let viewport = eframe::egui::ViewportBuilder::default()
-        .with_title("Craft Anything")
+        .with_title("AI Builder - Build Copies")
         .with_app_id("ai.storyteller.craft-anything")
         .with_inner_size([1360.0, 860.0])
         .with_min_inner_size([760.0, 520.0])
@@ -83,7 +83,7 @@ fn main() -> eframe::Result {
         setup.native_adapter_selector = Some(Arc::new(pick_adapter));
     }
     let run = eframe::run_native(
-        "Craft Anything",
+        "AI Builder - Build Copies",
         options,
         Box::new(move |cc| {
             log::info!("window open");
