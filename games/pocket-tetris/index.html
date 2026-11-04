@@ -65,7 +65,7 @@ body{background:#25242b;display:flex;align-items:center;justify-content:center;f
     <div id="light"></div>
   </div>
   <div id="brand">POCKET <strong>GAME BOY</strong> <span>★</span></div>
-  <div id="help">START · PLAY / PAUSE &nbsp; | &nbsp; C · COLOUR</div>
+  <div id="help">START · PLAY / PAUSE &nbsp; | &nbsp; C · COLOUR ON MENU</div>
   <div id="dpad" aria-label="Directional pad">
     <div class="arm vertical"></div><div class="arm horizontal"></div><div class="center"></div>
     <button class="touch" id="up" data-action="up" aria-label="Up"></button>
@@ -93,8 +93,8 @@ const IDS=Object.keys(SH),SCORE=[0,40,100,300,1200];
 const empty=()=>Array.from({length:H},()=>Array(W).fill(null));
 let game='menu',mode='A',starting=0,height=0,colour=true,mute=false,board=empty(),piece=null,next=null,bag=[],lines=0,score=0,level=0,high=0,old=0,gravity=0,flash=0,clock=0,audio=null;
 const records={A:0,B:0};
-try{Object.assign(records,JSON.parse(localStorage.getItem('gbt-v2-high')||'{}'));colour=localStorage.getItem('gbt-v2-colour')!=='false';mute=localStorage.getItem('gbt-v2-mute')==='true';}catch(e){}
-function save(){try{localStorage.setItem('gbt-v2-high',JSON.stringify(records));localStorage.setItem('gbt-v2-colour',String(colour));localStorage.setItem('gbt-v2-mute',String(mute))}catch(e){}}
+try{Object.assign(records,JSON.parse(localStorage.getItem('gbt-v2-high')||'{}'));colour=localStorage.getItem('gbt-v3-colour')!=='false';mute=localStorage.getItem('gbt-v2-mute')==='true';}catch(e){}
+function save(){try{localStorage.setItem('gbt-v2-high',JSON.stringify(records));localStorage.setItem('gbt-v3-colour',String(colour));localStorage.setItem('gbt-v2-mute',String(mute))}catch(e){}}
 function randPiece(){if(!bag.length){bag=IDS.slice();for(let i=bag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[bag[j],bag[i]]=[bag[i],bag[j]];}}return bag.pop();}
 function matrix(id){return SH[id].map(r=>r.slice());}
 function sound(freq=360,ms=34,vol=.022){if(mute)return;try{audio ||=new (window.AudioContext||window.webkitAudioContext)();if(audio.state==='suspended')audio.resume();const o=audio.createOscillator(),g=audio.createGain();o.type='square';o.frequency.value=freq;g.gain.setValueAtTime(vol,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+ms/1000);o.connect(g);g.connect(audio.destination);o.start();o.stop(audio.currentTime+ms/1000)}catch(e){}}
@@ -114,7 +114,7 @@ function start(){if(game==='menu'||game==='over'||game==='won'){begin();return;}
 function command(a){switch(a){
 case 'start':start();break;
 case 'select':if(game==='menu'){mode=mode==='A'?'B':'A';sound(320);}else if(game==='paused'){mute=!mute;save();}break;
-case 'c':colour=!colour;save();sound(520);break;
+case 'c':if(game==='menu'){colour=!colour;save();sound(520);}break;
 case 'a':if(game==='menu'||game==='over'||game==='won')begin();else if(game==='paused'){game='menu';}else rotate(true);break;
 case 'b':if(game==='menu')mode=mode==='A'?'B':'A';else if(game==='paused'){game='menu';}else rotate(false);break;
 case 'left':if(game==='menu'){starting=Math.max(0,starting-1);sound(240);}else move(-1);break;
@@ -135,7 +135,7 @@ function boardDraw(){R(bx-5,by-5,W*T+10,H*T+10,colour?'#665f91':'#637b5d');R(bx-
 if(piece&&game!=='menu')piece.sh.forEach((row,r)=>row.forEach((v,c)=>{let y=piece.y+r;if(v&&y>=0&&y<H)block(bx+(piece.x+c)*T,by+y*T,T,piece.id);}));}
 function smallPreview(){let m=SH[next||'I'],coords=[];m.forEach((row,y)=>row.forEach((v,x)=>{if(v)coords.push([x,y]);}));let mx=Math.min(...coords.map(c=>c[0])),my=Math.min(...coords.map(c=>c[1])),maxx=Math.max(...coords.map(c=>c[0])),maxy=Math.max(...coords.map(c=>c[1]));let x=381-((maxx-mx+1)*15)/2,y=84-((maxy-my+1)*15)/2;coords.forEach(([xx,yy])=>block(x+(xx-mx)*15,y+(yy-my)*15,15,next||'I'));}
 function hud(){text('TETRIS',16,18,21,fg());text('TYPE '+mode,16,49,14,dim());text('LEVEL',16,97,16,dim());text(String(level).padStart(2,'0'),16,121,26);text('LINES',16,178,16,dim());text(String(lines).padStart(3,'0'),16,203,24);text('BEST',16,261,13,dim());text(String(records[mode]||0),16,279,17);
-text('NEXT',347,25,18,fg());R(341,49,124,78,colour?'#292e60':'#9cad7d');smallPreview();text('SCORE',346,152,17,dim());text(String(score).padStart(6,'0'),346,178,19);text('LEVEL '+level,346,222,15);text(mute?'SOUND OFF':'SOUND ON',346,253,12,dim());text('C: COLOUR',346,282,13,dim());}
+text('NEXT',347,25,18,fg());R(341,49,124,78,colour?'#292e60':'#9cad7d');smallPreview();text('SCORE',346,152,17,dim());text(String(score).padStart(6,'0'),346,178,19);text('LEVEL '+level,346,222,15);text(mute?'SOUND OFF':'SOUND ON',346,253,12,dim());text('C: MENU ONLY',346,282,12,dim());}
 function rays(){for(let i=0;i<14;i++){let x=240,y=160,ang=(i/14)*Math.PI*2;let a1=ang-.12,a2=ang+.12;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+720*Math.cos(a1),y+720*Math.sin(a1));ctx.lineTo(x+720*Math.cos(a2),y+720*Math.sin(a2));ctx.closePath();ctx.fillStyle=i%2?'#3e386c':'#35456e';ctx.fill();}}
 function skyline(){for(let i=0;i<28;i++){let x=i*20-10,h=35+((i*47)%51);R(x,164-h,19,h,colour?'#33324f':'#879973');for(let y=174-h;y<160;y+=15)for(let c=x+3;c<x+17;c+=8)R(c,y,4,7,colour?'#8d715b':'#607849');}R(0,158,480,20,colour?'#4e4057':'#768662');}
 function menu(){rays();skyline();R(0,180,480,140,colour?'#24234288':'#83976c88');text('TETRIS',240,37,80,'#08071b',true);text('TETRIS',237,34,80,colour?'#ffffff':'#e1e8ba',true);text('COLOUR GAME BOY EDITION',240,113,15,fg(),true);R(92,151,295,132,colour?'#0d0d308f':'#839771b0');text('TYPE '+mode+'   LEVEL '+String(starting).padStart(2,'0'),240,159,22,fg(),true);if(mode==='B')text('HEIGHT '+height,240,188,16,fg(),true);text('▶ PRESS START TO PLAY',240,217,19,fg(),true);text('SELECT: A/B    ◀ ▶: LEVEL',240,248,13,dim(),true);text('MADE JUST FOR YOU ♥',240,291,16,fg(),true);}
