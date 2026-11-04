@@ -1,0 +1,61 @@
+name: Publish AI Builder Windows download
+
+# Create a standard GitHub Release from the already successful Windows build.
+# This avoids the hard-to-find Actions artifact download UI entirely.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-ai-builder-download.yml'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    if: github.repository == 'dannythehat/AI-Builder-Build-Copies'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Download verified Windows artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh run download 41782352497 -R "$GITHUB_REPOSITORY" --name AI-Builder-Build-Copies-Windows-x64 --dir "$RUNNER_TEMP/ai-builder"
+          echo "Downloaded files:"
+          find "$RUNNER_TEMP/ai-builder" -maxdepth 3 -type f -printf '%P (%s bytes)\n'
+          test -s "$RUNNER_TEMP/ai-builder/AI-Builder.exe"
+          test -s "$RUNNER_TEMP/ai-builder/craft-anything-cli.exe"
+          test -s "$RUNNER_TEMP/ai-builder/Install-AI-Builder.ps1"
+          test -s "$RUNNER_TEMP/ai-builder/Install-AI-Builder.cmd"
+          test -s "$RUNNER_TEMP/ai-builder/Setup-Any-AI.ps1"
+
+      - name: Package direct Windows download
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/ai-builder"
+          zip -q -r "$RUNNER_TEMP/AI-Builder-Build-Copies-Windows-x64.zip" .
+          unzip -t "$RUNNER_TEMP/AI-Builder-Build-Copies-Windows-x64.zip" | tail -n 2
+          sha256sum "$RUNNER_TEMP/AI-Builder-Build-Copies-Windows-x64.zip" | tee "$RUNNER_TEMP/AI-Builder-Build-Copies-Windows-x64.zip.sha256"
+
+      - name: Publish easy-to-download GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag='ai-builder-windows-2026-11-04'
+          notes=$'Windows x64 portable application built from our repository.\n\nDownload AI-Builder-Build-Copies-Windows-x64.zip, extract it, then double-click Install-AI-Builder.cmd. The installer creates an AI Builder desktop shortcut and launches the app.\n\nIncludes Setup-Any-AI.ps1 to configure supported coding agents and API backends.\n\nThe executable is an unsigned independent build. Original source and licence terms are retained.\n\nVerified source build: https://github.com/dannythehat/AI-Builder-Build-Copies/actions/runs/41782352497'
+          gh release create "$tag" \
+            "$RUNNER_TEMP/AI-Builder-Build-Copies-Windows-x64.zip" \
+            "$RUNNER_TEMP/AI-Builder-Build-Copies-Windows-x64.zip.sha256" \
+            -R "$GITHUB_REPOSITORY" \
+            --target 'be03d1e8024d2f3b713e9cbc57ee689fac434c51' \
+            --title 'AI Builder - Build Copies | Windows x64' \
+            --notes "$notes" \
+            --latest
+          echo "Direct download: https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/AI-Builder-Build-Copies-Windows-x64.zip"
