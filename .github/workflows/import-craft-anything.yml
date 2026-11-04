@@ -1,0 +1,40 @@
+name: Import pinned Craft Anything source
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/import-craft-anything.yml'
+permissions:
+  contents: write
+jobs:
+  import:
+    if: github.repository == 'dannythehat/AI-Builder-Build-Copies'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out destination repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Import exact upstream source tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          PIN='7a0d7de0e4343dac35acb58cc64d021febcb7157'
+          SOURCE="$RUNNER_TEMP/craft-anything-source"
+          git init -q "$SOURCE"
+          git -C "$SOURCE" remote add origin https://github.com/storytold/craft-anything.git
+          git -C "$SOURCE" fetch --depth=1 --no-tags origin "$PIN"
+          git -C "$SOURCE" checkout -q --detach FETCH_HEAD
+          test "$(git -C "$SOURCE" rev-parse HEAD)" = "$PIN"
+          EXPECTED_TREE="$(git -C "$SOURCE" rev-parse HEAD^{tree})"
+          rsync -a --delete --exclude='.git/' "$SOURCE/" "$GITHUB_WORKSPACE/"
+          cd "$GITHUB_WORKSPACE"
+          git add -A
+          ACTUAL_TREE="$(git write-tree)"
+          echo "Expected source tree: $EXPECTED_TREE"
+          echo "Staged mirror tree:  $ACTUAL_TREE"
+          test "$ACTUAL_TREE" = "$EXPECTED_TREE"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Import exact Craft Anything source at 7a0d7de'
+          git push origin HEAD:main
