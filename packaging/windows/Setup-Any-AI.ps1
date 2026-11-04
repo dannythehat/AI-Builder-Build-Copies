@@ -38,7 +38,7 @@ function Invoke-Builder([string[]]$Arguments) {
 }
 
 if ($Provider -eq 'detect') {
-    Invoke-Builder @('ai','detect')
+    Invoke-Builder -Arguments @('ai','detect')
     Write-Host ''
     Write-Host 'Installed coding agents can be selected with: .\Setup-Any-AI.ps1 -Provider codex'
     Write-Host 'Other supported choices: claude, copilot, gemini, opencode, qwen, goose, hermes, maki, antigravity.'
@@ -46,7 +46,7 @@ if ($Provider -eq 'detect') {
     exit 0
 }
 if ($Provider -eq 'list') {
-    Invoke-Builder @('ai','list')
+    Invoke-Builder -Arguments @('ai','list')
     exit 0
 }
 
@@ -70,12 +70,12 @@ if ($Agents.ContainsKey($Provider)) {
     if (-not (Get-Command $Command -ErrorAction SilentlyContinue)) {
         throw "$Command is not installed or not on PATH. Install and sign in to the $BackendName CLI first, or set it up under Settings -> AI in the desktop app."
     }
-    Invoke-Builder @('ai','add',$BackendName,'--kind','agent_cli','--model',$Entry[1])
+    Invoke-Builder -Arguments @('ai','add',$BackendName,'--kind','agent_cli','--model',$Entry[1])
     if ($Model) {
         # Model selection is provider-dependent; the agent's native CLI must offer it.
-        Invoke-Builder @('ai','model',$BackendName,$Model)
+        Invoke-Builder -Arguments @('ai','model',$BackendName,$Model)
     }
-    Invoke-Builder @('ai','builder',$BackendName)
+    Invoke-Builder -Arguments @('ai','builder',$BackendName)
     Write-Host "Builder selected: $BackendName. Open AI-Builder.exe to start building."
     exit 0
 }
@@ -115,6 +115,6 @@ if ($KeyVariable) {
         $Arguments += @('--key-env',$KeyVariable)
     }
 }
-Invoke-Builder $Arguments
-Invoke-Builder @('ai','builder',$BackendName)
+Invoke-Builder -Arguments $Arguments
+Invoke-Builder -Arguments @('ai','builder',$BackendName)
 Write-Host "Builder selected: $BackendName. Open AI-Builder.exe to start building."
