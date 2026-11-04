@@ -29,14 +29,17 @@ Our portable distribution includes `Setup-Any-AI.ps1` as an optional PowerShell 
 2. Select a **successful** build; download the artifact named
    `AI-Builder-Build-Copies-Windows-x64` (sign in to GitHub if requested).
 3. Extract the ZIP; keep every file together.
-4. Run `AI-Builder.exe` to open the interface. No Rust compilation needed on your computer.
+4. **Double-click `Install-AI-Builder.cmd`.** It installs to your Windows user profile, adds an **AI Builder - Build Copies** shortcut to your Desktop and Start Menu, and opens the application. No administrator account or Rust compilation is needed.
 5. In **Settings → AI**, add an installed coding agent or your own API provider/key.
    On the **Make** screen choose the AI under **Built by**.
 6. Enter a website URL or app/game target and describe what you want.
    Start the build, approve any commands when asked, and review its checks.
 
 The Windows ZIP is built by your repository and **unsigned**; this is a
-self-produced test build, not a Microsoft-signed installer.
+self-produced test build, not a Microsoft-signed installer. Windows may display a
+security warning for the unsigned executable. You can verify the source and
+GitHub build run before using it. Re-running the installer updates the
+application without deleting its portable settings folder.
 
 ## Windows: optional one-command provider selection
 
